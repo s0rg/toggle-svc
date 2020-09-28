@@ -1,0 +1,17 @@
+linters-settings:
+  gocritic:
+    enabled-tags:
+      - performance
+  maligned:
+    suggest-new: true
+  errcheck:
+    ignore: "database/sql:(Rollback|Close)"
+
+linters:
+  enable-all: true
+  disable:
+    - gochecknoglobals
+    - gomnd
+    - gci
+    - gofumpt
+  fast: false

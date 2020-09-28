@@ -1,0 +1,56 @@
+version: "3"
+services:
+
+  db:
+    image: postgres:12-alpine
+    restart: always
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./sql:/usr/local/share/db-init:ro
+      - ./docker/postgres:/docker-entrypoint-initdb.d:ro
+    environment:
+      # master password
+      POSTGRES_PASSWORD: "db-root-pass"
+      # see: docker/postgres/init-dbs.sh for details
+      INIT_DBS: "toggle:toggle-pwd"
+    networks:
+      - backend
+
+  redis:
+    image: redis:6-alpine
+    volumes:
+      - ./docker/redis.conf:/etc/redis.conf:ro
+      - redis-data:/data
+    logging:
+      driver: "none"
+    command:
+      - "redis-server"
+      - "/etc/redis.conf"
+    networks:
+      - backend
+
+  toggle-svc:
+    image: toggle-svc:latest
+    restart: always
+    ports:
+      - "8080:8080"
+    links:
+      - db
+      - redis
+    depends_on:
+      - db
+      - redis
+    environment:
+      APP_DB: "postgres://toggle:toggle-pwd@db/toggledb?sslmode=disable"
+      APP_REDIS: "redis:6379"
+      APP_ADDR: "0.0.0.0:8080"
+      APP_EXPIRATION: "5m"
+    networks:
+      - backend
+
+networks:
+  backend:
+
+volumes:
+  db-data:
+  redis-data:
