@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"log"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"github.com/s0rg/toggle-svc/pkg/api"
 	"github.com/s0rg/toggle-svc/pkg/db"
 	"github.com/s0rg/toggle-svc/pkg/redis"
+	"github.com/s0rg/toggle-svc/pkg/toggle"
 )
 
 const (
@@ -17,7 +19,10 @@ const (
 	waiterWait   = time.Second / 2
 )
 
-var errWaiterOverflow = errors.New("waiter overflow")
+var (
+	errWaiterOverflow = errors.New("waiter overflow")
+	errClientNotAlive = errors.New("not alive")
+)
 
 type service struct {
 	addr string
@@ -98,7 +103,7 @@ func (s *service) watchKey(k string) (err error) {
 }
 
 func (s *service) Serve() (err error) {
-	h := api.New(s.db, s.rd, s.watchKey)
+	h := api.New(s, s.db)
 
 	srv := &http.Server{
 		Addr:           s.addr,
@@ -116,4 +121,95 @@ func (s *service) Serve() (err error) {
 	<-s.wch
 
 	return err
+}
+
+func (s *service) loadState(key string, keys toggle.Keys) (found bool, err error) {
+	var keyIDs []int64
+
+	if keyIDs, found, err = s.rd.GetState(key); err != nil || !found {
+		return
+	}
+
+	if err = s.rd.MarkAlive(key); err != nil {
+		return
+	}
+
+	keys.EnableByID(keyIDs)
+
+	return
+}
+
+func (s *service) makeState(app, version, platform string, keys toggle.Keys) (key string, err error) {
+	var (
+		total  int64
+		counts []int64
+	)
+
+	if counts, err = s.rd.TogglesGet(app, version, platform, keys); err != nil {
+		return
+	}
+
+	if total, err = s.rd.ClientsInc(app, version, platform); err != nil {
+		return
+	}
+
+	keys.DisableByRate(total, counts)
+
+	if key, err = s.rd.TogglesIncr(app, version, platform, keys); err != nil {
+		return
+	}
+
+	err = s.watchKey(key)
+
+	return key, err
+}
+
+func (s *service) CodeToggles(
+	ctx context.Context,
+	app, version, platform, toggleID string,
+) (
+	clientID string,
+	keys toggle.Keys,
+	err error,
+) {
+	var (
+		appID int64
+		found bool
+	)
+
+	if appID, err = s.db.GetAppID(ctx, app); err != nil {
+		return
+	}
+
+	if keys, err = s.db.GetAppFeatures(ctx, appID, version, platform); err != nil {
+		return
+	}
+
+	if toggleID != "" {
+		if found, err = s.loadState(toggleID, keys); err != nil {
+			return
+		}
+	}
+
+	clientID = toggleID
+
+	if !found {
+		clientID, err = s.makeState(app, version, platform, keys)
+	}
+
+	return clientID, keys, err
+}
+
+func (s *service) MarkAlive(_ context.Context, clientID string) (err error) {
+	var alive bool
+
+	if alive, err = s.rd.IsAlive(clientID); err != nil {
+		return
+	}
+
+	if !alive {
+		return errClientNotAlive
+	}
+
+	return s.rd.MarkAlive(clientID)
 }

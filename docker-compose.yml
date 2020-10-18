@@ -41,10 +41,10 @@ services:
       - db
       - redis
     environment:
+      APP_ADDR: "0.0.0.0:8080"
       APP_DB: "postgres://toggle:toggle-pwd@db/toggledb?sslmode=disable"
       APP_REDIS: "redis:6379"
-      APP_ADDR: "0.0.0.0:8080"
-      APP_EXPIRATION: "5m"
+      APP_EXPIRE: "5m"
     networks:
       - backend
 

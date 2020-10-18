@@ -11,6 +11,8 @@ linters:
   enable-all: true
   disable:
     - gochecknoglobals
+    - exhaustivestruct
+    - wrapcheck
     - gomnd
     - gci
     - gofumpt

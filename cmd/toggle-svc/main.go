@@ -21,7 +21,7 @@ const (
 	envDBKey      = "DB"
 	envAddr       = "ADDR"
 	envRedisKey   = "REDIS"
-	envExpiration = "EXPIRATION"
+	envExpiration = "EXPIRE"
 )
 
 var (
