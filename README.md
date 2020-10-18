@@ -15,12 +15,10 @@
 
 ## Redis keys
 
-`svc-toggle:clients:{segment-key}:count` - holds count of clients in each different segment
-
-`svc-toggle:clients:{state-key}:state` - hold state for each alive client (his segment-key and toggles).
-`svc-toggle:clients:{state-key}:alive` - alive flag for each client (with TTL)
-
-`svc-toggle:toggles:{segment-key}:{toggle-id}:count` - count of toggles by segment for each toggle-id
+- `svc-toggle:clients:{segment-key}:count` - holds count of clients in each different segment
+- `svc-toggle:clients:{state-key}:state` - hold state for each alive client (his segment-key and toggles).
+- `svc-toggle:clients:{state-key}:alive` - alive flag for each client (with TTL)
+- `svc-toggle:toggles:{segment-key}:{toggle-id}:count` - count of toggles by segment for each toggle-id
 
 # Usage
 
